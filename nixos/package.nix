@@ -120,14 +120,17 @@ rec {
       # and their own deps come from the wrapper's LD_LIBRARY_PATH.
       # Restored packages live in NUGET_PACKAGES and/or the read-only
       # NUGET_FALLBACK_PACKAGES.
+      # Several native-asset versions can coexist in the NuGet store
+      # (different dependency chains pin different ones); the managed
+      # assemblies bind to the highest resolved version, so take that.
       for lib_spec in \
           "libSkiaSharp.so:skiasharp.nativeassets.linux" \
           "libHarfBuzzSharp.so:harfbuzzsharp.nativeassets.linux"; do
         lib_name="''${lib_spec%%:*}"
         pkg_name="''${lib_spec##*:}"
         so_path=$(find -L "$NUGET_PACKAGES" "$NUGET_FALLBACK_PACKAGES" \
-                  -path "*/$pkg_name/*/runtimes/linux-x64/native/$lib_name" \
-                  -print -quit 2>/dev/null)
+                  -path "*/$pkg_name/*/runtimes/linux-x64/native/$lib_name" 2>/dev/null \
+                  | sort -V | tail -1)
         if [ -z "$so_path" ]; then
           echo "ERROR: $lib_name not found in restored NuGet packages" >&2
           exit 1
